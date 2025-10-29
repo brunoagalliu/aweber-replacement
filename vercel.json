@@ -1,25 +1,14 @@
 {
     "version": 2,
-    "builds": [
-      {
-        "src": "api/**/*.js",
-        "use": "@vercel/node"
-      },
-      {
-        "src": "public/**",
-        "use": "@vercel/static"
-      }
-    ],
     "routes": [
       { "src": "/api/debug", "dest": "/api/debug.js" },
       { "src": "/api/test-db", "dest": "/api/test-db.js" },
       { "src": "/api/lists", "dest": "/api/lists.js" },
       { "src": "/api/subscribers", "dest": "/api/subscribers.js" },
-      { "src": "/(.*\\.css|.*\\.js|.*\\.png|.*\\.jpg|.*\\.gif|.*\\.svg)", "dest": "/public/$1" },
-      { "src": "/", "dest": "/public/index.html" },
-      { "src": "/subscribers(.html)?", "dest": "/public/subscribers.html" },
-      { "src": "/form(.html)?", "dest": "/public/form.html" },
-      { "src": "/thank-you(.html)?", "dest": "/public/thank-you.html" },
-      { "src": "/(.*)", "dest": "/public/$1" }
+      { "src": "/css/style.css", "dest": "/api/style.js" },
+      { "src": "/subscribers(.html)?", "dest": "/api/page-subscribers.js" },
+      { "src": "/form(.html)?", "dest": "/api/page-form.js" },
+      { "src": "/thank-you(.html)?", "dest": "/api/page-thankyou.js" },
+      { "src": "/", "dest": "/api/page-index.js" }
     ]
   }
