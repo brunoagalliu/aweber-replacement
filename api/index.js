@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-require('dotenv').config();
+//require('dotenv').config();
 
 const listRoutes = require('../src/routes/lists');
 const subscriberRoutes = require('../src/routes/subscribers');
