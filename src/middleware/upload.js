@@ -2,8 +2,8 @@ const multer = require('multer');
 const path = require('path');
 const os = require('os');
 
-// Use /tmp directory for Vercel (serverless)
-const uploadDir = process.env.VERCEL ? os.tmpdir() : 'uploads/';
+// Use /tmp directory on Vercel (serverless), uploads/ locally
+const uploadDir = process.env.VERCEL ? path.join(os.tmpdir(), 'uploads') : 'uploads/';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

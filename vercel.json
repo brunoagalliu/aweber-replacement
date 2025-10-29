@@ -1,0 +1,32 @@
+{
+    "version": 2,
+    "env": {
+      "VERCEL": "true"
+    },
+    "builds": [
+      {
+        "src": "api/index.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "/api/index.js"
+      },
+      {
+        "src": "/(.*\\.(html|css|js|png|jpg|jpeg|gif|svg|ico|json))",
+        "dest": "/public/$1"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/public/$1"
+      }
+    ],
+    "functions": {
+      "api/index.js": {
+        "memory": 3008,
+        "maxDuration": 10
+      }
+    }
+  }
