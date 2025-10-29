@@ -209,69 +209,73 @@ const LIST_ID = 1; // Your list ID
         });
     
         form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-    
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.replace(/\D/g, ''); // Remove formatting
-    
-            // Validation
-            if (!name || !email || !phone) {
-                showMessage('Please fill in all required fields.', 'error');
-                return;
-            }
-    
-            if (!isValidEmail(email)) {
-                showMessage('Please enter a valid email address.', 'error');
-                return;
-            }
-    
-            if (phone.length < 10) {
-                showMessage('Please enter a valid 10-digit phone number.', 'error');
-                return;
-            }
-    
-            // Disable form during submission
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-    
-            try {
-                const response = await fetch(`${API_URL}/subscribers`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email: email,
-                        name: name,
-                        phone: phone,
-                        listId: LIST_ID
-                    })
-                });
-    
-                const data = await response.json();
-    
-                if (response.ok) {
-                    // Show success message briefly
-                    showMessage('✅ Success! Redirecting...', 'success');
-                    
-                    // Redirect to thank you page after 1 second
-                    setTimeout(() => {
-                        window.location.href = 'thank-you.html';
-                    }, 1000);
-                } else {
-                    showMessage('❌ ' + (data.error || 'Something went wrong. Please try again.'), 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Submit';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('❌ Network error. Please check your connection and try again.', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit';
-            }
+    e.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.replace(/\D/g, '');
+
+    // Validation
+    if (!name || !email || !phone) {
+        showMessage('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    if (!isValidEmail(email)) {
+        showMessage('Please enter a valid email address.', 'error');
+        return;
+    }
+
+    if (phone.length < 10) {
+        showMessage('Please enter a valid 10-digit phone number.', 'error');
+        return;
+    }
+
+    // Disable form during submission
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Validating...';
+
+    try {
+        const response = await fetch(`${API_URL}/subscribers`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                name: name,
+                phone: phone,
+                listId: LIST_ID
+            })
         });
-    
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Success
+            showMessage('✅ Success! Redirecting...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = 'thank-you.html';
+            }, 1000);
+        } else if (response.status === 403 && data.code === 'BOT_DETECTED') {
+            // Bot detected
+            showMessage('⚠️ ' + (data.message || 'Your submission could not be verified. Please try again or contact support.'), 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit';
+        } else {
+            // Other errors
+            showMessage('❌ ' + (data.error || data.message || 'Something went wrong. Please try again.'), 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('❌ Network error. Please check your connection and try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+    }
+});
         function showMessage(text, type) {
             messageDiv.textContent = text;
             messageDiv.className = 'message ' + type + ' show';
