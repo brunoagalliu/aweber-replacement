@@ -1,9 +1,13 @@
 const multer = require('multer');
 const path = require('path');
+const os = require('os');
+
+// Use /tmp directory for Vercel (serverless)
+const uploadDir = process.env.VERCEL ? os.tmpdir() : 'uploads/';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));

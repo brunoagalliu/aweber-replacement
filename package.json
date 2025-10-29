@@ -4,7 +4,11 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "build": "echo 'Build complete'"
+  },
+  "engines": {
+    "node": "18.x"
   },
   "keywords": [
     "email",
