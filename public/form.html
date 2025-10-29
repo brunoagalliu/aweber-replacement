@@ -185,8 +185,10 @@
 
     <script>
         // Configuration - CHANGE THESE VALUES
-        const API_URL = 'http://localhost:3000/api';
-        const LIST_ID = 1; // Change this to your target list ID
+        const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api' 
+  : '/api';
+const LIST_ID = 1; // Your list ID
     
         const form = document.getElementById('subscribeForm');
         const submitBtn = document.getElementById('submitBtn');
