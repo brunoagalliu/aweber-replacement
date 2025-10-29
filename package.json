@@ -1,0 +1,41 @@
+{
+  "name": "aweber-replacement",
+  "version": "1.0.0",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "keywords": [
+    "email",
+    "list",
+    "aweber",
+    "newsletter",
+    "subscribers",
+    "csv-import",
+    "lead-capture"
+  ],
+  "author": "Bruno",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brunoagalliu/aweber-replacement.git"
+  },
+  "bugs": {
+    "url": "https://github.com/brunoagalliu/aweber-replacement/issues"
+  },
+  "homepage": "https://github.com/brunoagalliu/aweber-replacement#readme",
+  "description": "",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.15.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

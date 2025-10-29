@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscribers - Email List Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Subscribers Database</h1>
+        
+        <nav class="nav">
+            <a href="index.html">Dashboard</a>
+            <a href="subscribers.html" class="active">View Subscribers</a>
+            <a href="form.html" target="_blank">Sign Up Form</a>
+        </nav>
+
+        <section class="card">
+            <div class="toolbar">
+                <h2 style="margin:0;">All Subscribers (<span id="totalCount">0</span>)</h2>
+                <button class="export-btn" onclick="exportToCSV()">📥 Export to CSV</button>
+            </div>
+
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="searchEmail">Search Email/Name</label>
+                    <input type="text" id="searchEmail" placeholder="Type to search...">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterList">Filter by List</label>
+                    <select id="filterList">
+                        <option value="">All Lists</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterStatus">Status</label>
+                    <select id="filterStatus">
+                        <option value="">All</option>
+                        <option value="0">Active</option>
+                        <option value="1">Stopped</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="perPage">Per Page</label>
+                    <select id="perPage">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="loadingState" class="loading">Loading subscribers...</div>
+            
+            <div id="tableWrapper" style="display:none;">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Date Added</th>
+                                <th>Location</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subscribersTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="pagination"></div>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display:none;">
+                No subscribers found.
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        let allSubscribers = [];
+        let filteredSubscribers = [];
+        let currentPage = 1;
+        let perPage = 50;
+        let currentListId = '';
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLists();
+            loadSubscribers();
+            setupEventListeners();
+        });
+    
+        function setupEventListeners() {
+            document.getElementById('searchEmail').addEventListener('input', debounce(filterAndDisplay, 300));
+            document.getElementById('filterList').addEventListener('change', (e) => {
+                currentListId = e.target.value;
+                loadSubscribers(); // Reload from server with list filter
+            });
+            document.getElementById('filterStatus').addEventListener('change', filterAndDisplay);
+            document.getElementById('perPage').addEventListener('change', (e) => {
+                perPage = parseInt(e.target.value);
+                currentPage = 1;
+                filterAndDisplay();
+            });
+        }
+    
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    
+        async function loadLists() {
+            try {
+                const response = await fetch(`${API_URL}/lists`);
+                const lists = await response.json();
+                
+                const filterList = document.getElementById('filterList');
+                filterList.innerHTML = '<option value="">All Lists</option>';
+                
+                lists.forEach(list => {
+                    filterList.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+                });
+            } catch (error) {
+                console.error('Error loading lists:', error);
+            }
+        }
+    
+        async function loadSubscribers() {
+            try {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('tableWrapper').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+                
+                // Build URL with list filter if selected
+                let url = `${API_URL}/subscribers`;
+                if (currentListId) {
+                    url += `?listId=${currentListId}`;
+                }
+                
+                const response = await fetch(url);
+                allSubscribers = await response.json();
+                
+                document.getElementById('loadingState').style.display = 'none';
+                
+                if (allSubscribers.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('tableWrapper').style.display = 'none';
+                    document.getElementById('totalCount').textContent = '0';
+                } else {
+                    document.getElementById('emptyState').style.display = 'none';
+                    document.getElementById('tableWrapper').style.display = 'block';
+                    filterAndDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading subscribers:', error);
+                document.getElementById('loadingState').innerHTML = 
+                    '<p style="color:red;">Error loading subscribers. Please refresh.</p>';
+            }
+        }
+    
+        function filterAndDisplay() {
+            const searchTerm = document.getElementById('searchEmail').value.toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value;
+            
+            filteredSubscribers = allSubscribers.filter(sub => {
+                const matchesSearch = !searchTerm || 
+                    sub.email.toLowerCase().includes(searchTerm) ||
+                    (sub.name && sub.name.toLowerCase().includes(searchTerm));
+                
+                const matchesStatus = !statusFilter || 
+                    sub.stop_status.toString() === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+    
+            document.getElementById('totalCount').textContent = filteredSubscribers.length;
+            currentPage = 1;
+            displaySubscribers();
+        }
+    
+        function displaySubscribers() {
+            const start = (currentPage - 1) * perPage;
+            const end = start + perPage;
+            const pageData = filteredSubscribers.slice(start, end);
+    
+            const tbody = document.getElementById('subscribersTableBody');
+            tbody.innerHTML = '';
+    
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">No subscribers match your filters</td></tr>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+    
+            pageData.forEach(sub => {
+                const dateAdded = sub.date_added 
+                    ? new Date(sub.date_added).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : 'N/A';
+                
+                const location = [sub.city, sub.region, sub.country]
+                    .filter(Boolean)
+                    .join(', ') || '-';
+                
+                const status = sub.stop_status === 0 
+                    ? '<span class="badge badge-active">✅ Active</span>'
+                    : '<span class="badge badge-stopped">⛔ Stopped</span>';
+    
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${sub.email}</strong></td>
+                        <td>${sub.name || '-'}</td>
+                        <td>${sub.phone || '-'}</td>
+                        <td>${dateAdded}</td>
+                        <td>${location}</td>
+                        <td>${sub.ip_address || '-'}</td>
+                        <td>${status}</td>
+                        <td>${sub.tags || '-'}</td>
+                    </tr>
+
+                `;
+            });
+    
+            renderPagination();
+        }
+    
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredSubscribers.length / perPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+    
+            let html = '<button onclick="goToPage(1)" ' + (currentPage === 1 ? 'disabled' : '') + '>First</button>';
+            html += '<button onclick="goToPage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '>Previous</button>';
+            
+            // Show page numbers around current page
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (startPage > 1) {
+                html += '<button onclick="goToPage(1)">1</button>';
+                if (startPage > 2) html += '<span style="padding:0 10px;">...</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += '<button onclick="goToPage(' + i + ')" ' + 
+                        (currentPage === i ? 'class="active"' : '') + '>' + i + '</button>';
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += '<span style="padding:0 10px;">...</span>';
+                html += '<button onclick="goToPage(' + totalPages + ')">' + totalPages + '</button>';
+            }
+            
+            html += '<button onclick="goToPage(' + (currentPage + 1) + ')" ' + (currentPage === totalPages ? 'disabled' : '') + '>Next</button>';
+            html += '<button onclick="goToPage(' + totalPages + ')" ' + (currentPage === totalPages ? 'disabled' : '') + '>Last</button>';
+    
+            pagination.innerHTML = html;
+        }
+    
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredSubscribers.length / perPage);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            displaySubscribers();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    
+        function exportToCSV() {
+            if (filteredSubscribers.length === 0) {
+                alert('No subscribers to export');
+                return;
+            }
+    
+            const listName = currentListId ? 
+                document.querySelector(`#filterList option[value="${currentListId}"]`).textContent : 
+                'all';
+    
+                const headers = [
+                    'Email', 'Name', 'Phone', 'Date Added', 'Stop Time', 'Stop Status',
+                    'Misc', 'Ad Tracking', 'IP Address', 'Web Form URL',
+                    'Country', 'Region', 'City', 'Postal Code',
+                    'Latitude', 'Longitude', 'DMA Code', 'Area Code', 'Tags'
+                ];
+    
+            let csv = headers.join(',') + '\n';
+    
+            filteredSubscribers.forEach(sub => {
+                const row = [
+                    sub.email,
+                    sub.name || '',
+                    sub.phone || '', // NEW
+                    sub.date_added || '',
+                    sub.stop_time || '',
+                    sub.stop_status,
+                    sub.misc || '',
+                    sub.ad_tracking || '',
+                    sub.ip_address || '',
+                    sub.web_form_url || '',
+                    sub.country || '',
+                    sub.region || '',
+                    sub.city || '',
+                    sub.postal_code || '',
+                    sub.latitude || '',
+                    sub.longitude || '',
+                    sub.dma_code || '',
+                    sub.area_code || '',
+                    sub.tags || ''
+                ].map(field => `"${field}"`);
+    
+                csv += row.join(',') + '\n';
+            });
+    
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `subscribers_${listName}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Email List Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📧 AWeber Email List Manager</h1>
+        
+        <nav class="nav">
+            <a href="index.html" class="active">Dashboard</a>
+            <a href="subscribers.html">View Subscribers</a>
+            <a href="form.html" target="_blank">Sign Up Form</a>
+        </nav>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number" id="totalLists">0</div>
+                <div class="stat-label">Total Lists</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="totalSubscribers">0</div>
+                <div class="stat-label">Total Subscribers</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="activeSubscribers">0</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+
+        <section class="card">
+            <h2>Create New List</h2>
+            <form id="createListForm">
+                <input type="text" id="listName" placeholder="List Name" required>
+                <textarea id="listDescription" placeholder="Description"></textarea>
+                <button type="submit">Create List</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Import AWeber CSV</h2>
+            <form id="importForm" enctype="multipart/form-data">
+                <select id="importListId" required>
+                    <option value="">Select a list...</option>
+                </select>
+                <input type="file" id="csvFile" accept=".csv" required>
+                <button type="submit" id="importBtn">Import CSV</button>
+            </form>
+            <p class="note">Supports full AWeber export format with all fields</p>
+            <div id="importProgress" style="display:none; margin-top:15px;">
+                <div style="background:#e0e0e0; border-radius:10px; overflow:hidden;">
+                    <div id="progressBar" style="background:#667eea; height:30px; width:0%; transition:width 0.3s; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;"></div>
+                </div>
+                <p id="importStatus" style="margin-top:10px; text-align:center;"></p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Add New Subscriber</h2>
+            <form id="addSubscriberForm">
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="text" id="name" placeholder="Full Name">
+                <select id="subscriberListId">
+                    <option value="">No list (optional)</option>
+                </select>
+                <button type="submit">Add Subscriber</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Your Lists</h2>
+            <div id="listsList"></div>
+        </section>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLists();
+            loadStats();
+        });
+
+        document.getElementById('createListForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('listName').value;
+            const description = document.getElementById('listDescription').value;
+
+            try {
+                const response = await fetch(`${API_URL}/lists`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description })
+                });
+                const data = await response.json();
+                alert(data.message);
+                e.target.reset();
+                loadLists();
+                loadStats();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        document.getElementById('importForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', document.getElementById('csvFile').files[0]);
+            formData.append('listId', document.getElementById('importListId').value);
+
+            const importBtn = document.getElementById('importBtn');
+            const progressDiv = document.getElementById('importProgress');
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('importStatus');
+
+            try {
+                importBtn.disabled = true;
+                importBtn.textContent = 'Importing...';
+                progressDiv.style.display = 'block';
+                progressBar.style.width = '50%';
+                progressBar.textContent = 'Processing...';
+                statusText.textContent = 'Reading and inserting records in bulk...';
+
+                const startTime = Date.now();
+                const response = await fetch(`${API_URL}/subscribers/import`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                const clientDuration = ((Date.now() - startTime) / 1000).toFixed(2);
+                
+                progressBar.style.width = '100%';
+                progressBar.textContent = '✅ Complete!';
+                statusText.innerHTML = `
+                    <strong>Import Complete!</strong><br>
+                    ⚡ Imported: ${data.imported} | 🔄 Duplicates: ${data.duplicates} | ⏭️ Skipped: ${data.skipped}<br>
+                    ⏱️ Server time: ${data.duration} | Total time: ${clientDuration}s
+                `;
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 5000);
+
+                e.target.reset();
+                loadStats();
+            } catch (error) {
+                statusText.textContent = '❌ Error: ' + error.message;
+                progressBar.style.background = '#ff4757';
+            } finally {
+                importBtn.disabled = false;
+                importBtn.textContent = 'Import CSV';
+            }
+        });
+
+        document.getElementById('addSubscriberForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const name = document.getElementById('name').value;
+            const listId = document.getElementById('subscriberListId').value;
+
+            try {
+                const response = await fetch(`${API_URL}/subscribers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name, listId })
+                });
+                const data = await response.json();
+                alert(data.message);
+                e.target.reset();
+                loadStats();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        async function loadLists() {
+            try {
+                const response = await fetch(`${API_URL}/lists`);
+                const lists = await response.json();
+                
+                const listsList = document.getElementById('listsList');
+                const importSelect = document.getElementById('importListId');
+                const subscriberSelect = document.getElementById('subscriberListId');
+                
+                listsList.innerHTML = '';
+                importSelect.innerHTML = '<option value="">Select a list...</option>';
+                subscriberSelect.innerHTML = '<option value="">No list (optional)</option>';
+                
+                if (lists.length === 0) {
+                    listsList.innerHTML = '<p class="empty-state">No lists yet. Create one above!</p>';
+                }
+                
+                lists.forEach(list => {
+                    listsList.innerHTML += `
+                        <div class="list-item">
+                            <div>
+                                <strong>${list.name}</strong>
+                                <p>${list.description || ''}</p>
+                            </div>
+                            <button class="delete-btn" onclick="deleteList(${list.id})">Delete</button>
+                        </div>
+                    `;
+                    importSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+                    subscriberSelect.innerHTML += `<option value="${list.id}">${list.name}</option>`;
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const [listsRes, subsRes] = await Promise.all([
+                    fetch(`${API_URL}/lists`),
+                    fetch(`${API_URL}/subscribers`)
+                ]);
+                
+                const lists = await listsRes.json();
+                const subscribers = await subsRes.json();
+                
+                document.getElementById('totalLists').textContent = lists.length;
+                document.getElementById('totalSubscribers').textContent = subscribers.length;
+                document.getElementById('activeSubscribers').textContent = 
+                    subscribers.filter(s => s.stop_status === 0).length;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function deleteList(id) {
+            if (!confirm('Delete this list and all its subscriber associations?')) return;
+            fetch(`${API_URL}/lists/${id}`, { method: 'DELETE' })
+                .then(() => {
+                    loadLists();
+                    loadStats();
+                })
+                .catch(err => alert('Error: ' + err.message));
+        }
+    </script>
+</body>
+</html>
