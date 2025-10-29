@@ -1,5 +1,25 @@
 {
     "version": 2,
-    "cleanUrls": true,
-    "trailingSlash": false
+    "builds": [
+      {
+        "src": "api/**/*.js",
+        "use": "@vercel/node"
+      },
+      {
+        "src": "public/**",
+        "use": "@vercel/static"
+      }
+    ],
+    "routes": [
+      { "src": "/api/debug", "dest": "/api/debug.js" },
+      { "src": "/api/test-db", "dest": "/api/test-db.js" },
+      { "src": "/api/lists", "dest": "/api/lists.js" },
+      { "src": "/api/subscribers", "dest": "/api/subscribers.js" },
+      { "src": "/(.*\\.css|.*\\.js|.*\\.png|.*\\.jpg|.*\\.gif|.*\\.svg)", "dest": "/public/$1" },
+      { "src": "/", "dest": "/public/index.html" },
+      { "src": "/subscribers(.html)?", "dest": "/public/subscribers.html" },
+      { "src": "/form(.html)?", "dest": "/public/form.html" },
+      { "src": "/thank-you(.html)?", "dest": "/public/thank-you.html" },
+      { "src": "/(.*)", "dest": "/public/$1" }
+    ]
   }
