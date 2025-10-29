@@ -12,7 +12,6 @@ const pool = mysql.createPool({
 });
 
 module.exports = async (req, res) => {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -23,7 +22,6 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET') {
-      // Parse query parameters
       const url = new URL(req.url, `http://${req.headers.host}`);
       const listId = url.searchParams.get('listId');
       
@@ -43,7 +41,6 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      // Add subscriber with Trestle validation
       const { email, name, phone, listId } = req.body;
 
       // Basic validation
@@ -55,7 +52,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Phone number is required' });
       }
 
-      // Validate email format
+      // Basic email format check
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({ error: 'Invalid email format' });
@@ -68,61 +65,63 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Invalid phone number' });
       }
 
-      // 🤖 TRESTLE BOT DETECTION
-      console.log('🔍 Validating phone with Trestle:', cleanPhone);
-      
-      const validation = await trestleService.validatePhone(cleanPhone, {
-        email: email,
-        name: name,
-        ip: req.headers['x-forwarded-for']?.split(',')[0] || req.headers['x-real-ip'],
-        user_agent: req.headers['user-agent']
-      });
+      // Get IP address
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0] || 
+                       req.headers['x-real-ip'] || 
+                       null;
 
-      console.log('📊 Trestle validation result:', {
-        score: validation.score,
-        isBot: validation.isBot,
-        riskLevel: validation.riskLevel
+      // 🔒 VERIFY PHONE WITH TRESTLE
+      const verification = await trestleService.verifyPhone(cleanPhone, ipAddress);
+
+      console.log('📊 Phone verification:', {
+        phone: cleanPhone,
+        botScore: verification.botScore,
+        isBot: verification.isBot,
+        verified: verification.verified
       });
 
       // Block if bot score is 70 or higher
-      if (validation.isBot) {
-        await trestleService.logBotAttempt({
+      if (verification.isBot) {
+        console.log('🤖 BOT DETECTED - Blocking submission:', {
           email,
           phone: cleanPhone,
-          score: validation.score,
-          ip: req.headers['x-forwarded-for']?.split(',')[0]
+          score: verification.botScore,
+          ip: ipAddress
         });
 
         return res.status(403).json({ 
-          error: 'Submission blocked due to suspicious activity',
-          message: 'Your submission could not be processed. Please contact support if you believe this is an error.',
+          error: 'Phone verification failed',
+          message: 'We could not verify your phone number. Please try again or contact support.',
           code: 'BOT_DETECTED'
         });
       }
 
-      // Check if phone is valid
-      if (!validation.isValid) {
+      // Block if phone is invalid
+      if (!verification.valid) {
         return res.status(400).json({ 
           error: 'Invalid phone number',
-          message: 'The phone number provided is not valid. Please check and try again.'
+          message: 'The phone number provided is not valid.'
         });
       }
 
       // Insert subscriber
       const [result] = await pool.execute(
         `INSERT INTO subscribers (
-          email, name, phone, date_added, stop_status, ip_address, 
-          misc, ad_tracking
+          email, name, phone, date_added, stop_status, ip_address, misc
         )
-        VALUES (?, ?, ?, NOW(), 0, ?, ?, ?)
+        VALUES (?, ?, ?, NOW(), 0, ?, ?)
         ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`,
         [
           email, 
           name || null, 
           cleanPhone,
-          req.headers['x-forwarded-for']?.split(',')[0] || req.headers['x-real-ip'] || null,
-          JSON.stringify({ trestle_score: validation.score, risk_level: validation.riskLevel }),
-          `trestle_validated_${validation.score}`
+          ipAddress,
+          JSON.stringify({ 
+            trestle_score: verification.botScore,
+            phone_type: verification.phoneType,
+            carrier: verification.carrier,
+            verified_at: new Date().toISOString()
+          })
         ]
       );
 
@@ -136,22 +135,19 @@ module.exports = async (req, res) => {
         );
       }
 
-      console.log('✅ Subscriber added successfully:', email, '| Trestle score:', validation.score);
+      console.log('✅ Subscriber added:', email, '| Bot score:', verification.botScore);
 
       return res.status(201).json({ 
         id: subscriberId, 
         message: 'Subscriber added successfully',
         email: email,
-        validation: {
-          score: validation.score,
-          verified: true
-        }
+        verified: true
       });
     }
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error);
     
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'This email is already subscribed' });
