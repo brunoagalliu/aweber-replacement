@@ -4,10 +4,12 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const listRoutes = require('./routes/lists');
 const subscriberRoutes = require('./routes/subscribers');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,10 +24,12 @@ if (!fs.existsSync(uploadDir)) {
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
 app.use(express.static('public'));
 
 // Increase timeout
@@ -36,6 +40,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/subscribers', subscriberRoutes);
 

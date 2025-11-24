@@ -77,9 +77,102 @@
     </div>
 
     <script>
-        const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000/api' 
-  : '/api';
+        // Add this at the very beginning of the script tag
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api' 
+    : '/api';
+
+// Check authentication
+function checkAuth() {
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token) {
+        window.location.href = '/login.html';
+        return false;
+    }
+    
+    // Verify token
+    fetch(`${API_URL}/auth/me`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+    })
+    .catch(() => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+    });
+    
+    return true;
+}
+
+// Run auth check on page load
+if (!checkAuth()) {
+    document.body.innerHTML = '<div style="text-align:center;padding:50px;">Redirecting to login...</div>';
+}
+
+// Add logout button to nav
+document.addEventListener('DOMContentLoaded', () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const nav = document.querySelector('.nav');
+    
+    if (nav && user.name) {
+        const logoutBtn = document.createElement('div');
+        logoutBtn.style.marginLeft = 'auto';
+        logoutBtn.style.display = 'flex';
+        logoutBtn.style.alignItems = 'center';
+        logoutBtn.style.gap = '15px';
+        logoutBtn.innerHTML = `
+            <span style="color: #667eea; font-weight: 600;">👤 ${user.name}</span>
+            <button onclick="logout()" style="padding: 8px 16px; background: #ff4757; color: white; border: none; border-radius: 5px; cursor: pointer;">Logout</button>
+        `;
+        nav.appendChild(logoutBtn);
+    }
+});
+
+function logout() {
+    const token = localStorage.getItem('auth_token');
+    
+    fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .finally(() => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+    });
+}
+
+// Update all fetch calls to include auth token
+const originalFetch = window.fetch;
+window.fetch = function(...args) {
+    const token = localStorage.getItem('auth_token');
+    
+    if (token && args[1]) {
+        args[1].headers = {
+            ...args[1].headers,
+            'Authorization': `Bearer ${token}`
+        };
+    } else if (token) {
+        args[1] = {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        };
+    }
+    
+    return originalFetch.apply(this, args);
+};
 
         document.addEventListener('DOMContentLoaded', () => {
             loadLists();

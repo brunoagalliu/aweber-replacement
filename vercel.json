@@ -3,6 +3,7 @@
     "routes": [
       { "src": "/api/debug", "dest": "/api/debug.js" },
       { "src": "/api/test-db", "dest": "/api/test-db.js" },
+      { "src": "/api/auth/(.*)", "dest": "/api/auth.js" },
       { "src": "/api/lists", "dest": "/api/lists.js" },
       { "src": "/api/subscribers", "dest": "/api/subscribers.js" },
       { "src": "/css/style.css", "dest": "/api/style.js" },
