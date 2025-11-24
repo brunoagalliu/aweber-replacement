@@ -1,15 +1,23 @@
 {
-    "version": 2,
-    "routes": [
-      { "src": "/api/debug", "dest": "/api/debug.js" },
-      { "src": "/api/test-db", "dest": "/api/test-db.js" },
-      { "src": "/api/auth/(.*)", "dest": "/api/auth.js" },
-      { "src": "/api/lists", "dest": "/api/lists.js" },
-      { "src": "/api/subscribers", "dest": "/api/subscribers.js" },
-      { "src": "/css/style.css", "dest": "/api/style.js" },
-      { "src": "/subscribers(.html)?", "dest": "/api/page-subscribers.js" },
-      { "src": "/form(.html)?", "dest": "/api/page-form.js" },
-      { "src": "/thank-you(.html)?", "dest": "/api/page-thankyou.js" },
-      { "src": "/", "dest": "/api/page-index.js" }
-    ]
-  }
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "src": "/api/auth/login", "dest": "/api/auth.js" },
+    { "src": "/api/auth/logout", "dest": "/api/auth.js" },
+    { "src": "/api/auth/me", "dest": "/api/auth.js" },
+    { "src": "/api/auth/(.*)", "dest": "/api/auth.js" },
+    { "src": "/api/lists(.*)", "dest": "/api/lists.js" },
+    { "src": "/api/subscribers(.*)", "dest": "/api/subscribers.js" },
+    { "src": "/css/style.css", "dest": "/api/style.js" },
+    { "src": "/login(.html)?", "dest": "/api/page-login.js" },
+    { "src": "/subscribers(.html)?", "dest": "/api/page-subscribers.js" },
+    { "src": "/form(.html)?", "dest": "/api/page-form.js" },
+    { "src": "/thank-you(.html)?", "dest": "/api/page-thankyou.js" },
+    { "src": "/", "dest": "/api/page-index.js" }
+  ]
+}
